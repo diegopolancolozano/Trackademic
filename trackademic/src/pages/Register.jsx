@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import {
   Container,
@@ -10,17 +10,45 @@ import {
   Snackbar,
   Alert,
   Box,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
 } from '@mui/material';
 
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
+  const [faculty, setFaculty] = useState('');
+  const [area, setArea] = useState('');
+  const [program, setProgram] = useState('');
+  const [semester, setSemester] = useState('');
+
+  const [faculties, setFaculties] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [programs, setPrograms] = useState([]);
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'info',
   });
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      const { data: facultiesData } = await supabase.from('faculties').select('*');
+      const { data: areasData } = await supabase.from('areas').select('*');
+      const { data: programsData } = await supabase.from('programs').select('*');
+
+      setFaculties(facultiesData || []);
+      setAreas(areasData || []);
+      setPrograms(programsData || []);
+    };
+
+    fetchOptions();
+  }, []);
 
   const handleRegister = async () => {
     const { error: signUpError } = await supabase.auth.signUp({ email, password });
@@ -38,9 +66,15 @@ export default function Register() {
 
     const userId = userData.user.id;
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({ id: userId, full_name: fullName });
+    const { error: profileError } = await supabase.from('profiles').insert({
+      id: userId,
+      full_name: fullName,
+      username,
+      faculty,
+      area,
+      program,
+      semester: parseInt(semester, 10),
+    });
 
     if (profileError) {
       setSnackbar({ open: true, message: profileError.message, severity: 'error' });
@@ -81,6 +115,64 @@ export default function Register() {
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
           />
+
+          <TextField
+            fullWidth
+            label="Nombre de usuario"
+            margin="normal"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Facultad</InputLabel>
+            <Select value={faculty} onChange={(e) => setFaculty(e.target.value)} label="Facultad">
+              {faculties.map((fac) => (
+                <MenuItem key={fac.code} value={fac.code}>
+                  {fac.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Área</InputLabel>
+            <Select value={area} onChange={(e) => setArea(e.target.value)} label="Área">
+              {areas.map((a) => (
+                <MenuItem key={a.code} value={a.code}>
+                  {a.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Programa</InputLabel>
+            <Select value={program} onChange={(e) => setProgram(e.target.value)} label="Programa">
+              {programs.map((p) => (
+                <MenuItem key={p.code} value={p.code}>
+                  {p.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <TextField
+            fullWidth
+            label="Semestre"
+            type="number"
+            margin="normal"
+            value={semester}
+            inputProps={{ min: 1, max: 10 }}
+            onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                if (value >= 1 && value <= 10) {
+                setSemester(e.target.value);
+                } else if (e.target.value === '') {
+                setSemester('');
+                }
+            }}
+            />
 
           <TextField
             fullWidth
