@@ -11,6 +11,7 @@ import {
   Alert,
   Box,
 } from '@mui/material';
+import {user} from '../services/infoUser'
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -30,6 +31,8 @@ export default function Login() {
     if (error) {
       setSnackbar({ open: true, message: error.message, severity: 'error' });
     } else {
+      user.init(email.trim());
+      
       setSnackbar({
         open: true,
         message: 'Inicio de sesión exitoso',
@@ -38,6 +41,8 @@ export default function Login() {
       setTimeout(() => {
         window.location.href = '/dashboard';
       }, 1500);
+      
+      
     }
   };
 

@@ -1,9 +1,11 @@
-// src/pages/Dashboard.jsx
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { Typography, Container, CircularProgress, Button, Box } from '@mui/material';
+import { Typography, Container, CircularProgress, Box } from '@mui/material';
+import Navbar from '../components/Navbar';
+import {user} from '../services/infoUser'
 
 export default function Dashboard() {
+  
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -15,7 +17,7 @@ export default function Dashboard() {
       return;
     }
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('profiles')
       .select('full_name')
       .eq('id', userId)
@@ -23,11 +25,6 @@ export default function Dashboard() {
 
     if (data) setFullName(data.full_name);
     setLoading(false);
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/';
   };
 
   useEffect(() => {
@@ -43,16 +40,14 @@ export default function Dashboard() {
   }
 
   return (
-    <Container sx={{ mt: 8 }}>
-      <Typography variant="h4" gutterBottom>
-        Bienvenido, {fullName}
-      </Typography>
-      <Typography variant="body1" gutterBottom>
-        Este es tu panel de control.
-      </Typography>
-      <Button variant="contained" color="secondary" onClick={handleLogout}>
-        Cerrar sesión
-      </Button>
-    </Container>
+    <>
+      <Navbar />
+      <Container>
+        <Typography variant="h4" gutterBottom>
+          Bienvenido, {fullName}
+        </Typography>
+        <Typography>Este es tu panel de control.</Typography>
+      </Container>
+    </>
   );
 }
