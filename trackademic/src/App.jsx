@@ -4,7 +4,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import MyPlans from './pages/MyPlans';
-import EditPlans from './pages/EditPlans';
+import AddPlans from './pages/AddPlans';
 import Settings from './pages/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
 import Course from './pages/Course';
@@ -41,10 +41,10 @@ function App() {
           }
         />
         <Route
-          path="/edit-plans"
+          path="/add-plans"
           element={
             <ProtectedRoute>
-              <EditPlans />
+              <AddPlans />
             </ProtectedRoute>
           }
         />

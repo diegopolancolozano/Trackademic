@@ -35,8 +35,8 @@ import {
             <Button color="inherit" onClick={() => navigate('/my-plans')}>
               Mis planes actuales
             </Button>
-            <Button color="inherit" onClick={() => navigate('/edit-plans')}>
-              Agregar o modificar planes
+            <Button color="inherit" onClick={() => navigate('/add-plans')}>
+              Agregar planes
             </Button>
             <IconButton color="inherit" onClick={() => navigate('/settings')}>
               <SettingsIcon />

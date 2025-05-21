@@ -1,0 +1,8 @@
+.card-container{
+    display: grid;
+    grid-template-columns: auto auto auto;
+
+}
+.card{
+    padding:10px;
+}
