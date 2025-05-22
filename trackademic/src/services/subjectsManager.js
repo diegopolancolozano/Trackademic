@@ -6,10 +6,7 @@ const subjectsManager={};
 subjectsManager.getSubjects=async ()=>{
     const semester=user.getSemester()
     const program=user.getProgram()
-    console.log("SEMESTER ")
-    console.log(semester)
-    console.log("PROGRAM")
-    console.log(program)
+    
 
     const { data, error } = await supabase 
     .from('subjects')
@@ -22,9 +19,16 @@ subjectsManager.getSubjects=async ()=>{
     // .eq('semester', semester)
     // .eq('program',program)
     return data
-
-
-
 }
+subjectsManager.addSubject=async(subject,name)=>{
+    const semester=user.getSemester();
+    const program=user.getProgram();
+    const {error} = await supabase  
+    .from('subjects')  
+    .insert({'semester':semester,'program_code':program,'code':subject,'name':name})
+    
+    return error==null
+}
+
 
 export default subjectsManager;

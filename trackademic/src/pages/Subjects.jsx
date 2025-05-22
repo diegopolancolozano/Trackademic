@@ -5,14 +5,14 @@ import SubjectCardContainer from '../components/SubjectCardContainer'
 
 
 
-export default function AddPlans() {
+export default function Subjects() {
   
   
   return (
     <>
       <Navbar />
       <Container>
-        <Typography variant="h5">Mis cursos </Typography>
+        <Typography variant="h5">Materias disponibles </Typography>
         <SubjectCardContainer/>
         
         

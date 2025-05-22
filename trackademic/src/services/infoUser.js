@@ -57,7 +57,6 @@ infoClient.init=async (userEmail)=>{
    infoClient.setArea(data[0].area);
    infoClient.setProgram(data[0].program);
    infoClient.setSemester(data[0].semester);
-   console.log(infoClient)
 
    
 

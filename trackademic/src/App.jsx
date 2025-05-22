@@ -4,10 +4,12 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import MyPlans from './pages/MyPlans';
-import AddPlans from './pages/AddPlans';
+import Subjects from './pages/Subjects';
 import Settings from './pages/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
 import Course from './pages/Course';
+
+import Plans from './pages/Plans'
 
 function App() {
   return (
@@ -41,13 +43,23 @@ function App() {
           }
         />
         <Route
-          path="/add-plans"
+          path="/subjects"
           element={
             <ProtectedRoute>
-              <AddPlans />
+              <Subjects />
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/subjects/:subjectId/plans"
+          element={
+            <ProtectedRoute>
+              <Plans/>
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/settings"
           element={

@@ -6,7 +6,7 @@ function CourseBox({ course }) {
     try {
         const { data, error: userError } = await supabase.auth.getUser();
         if (userError || !data?.user) {
-            console.log("Usuario no autenticado");
+            
             alert("Por favor, inicia sesión antes de inscribirte.");
             return;
         }
