@@ -7,15 +7,15 @@ import AddSubject from './AddSubjectModal';
 import ReloadSubjectContext from '../contexts/ReloadSubjectContext'
 
 const SubjectCardContainer = () => {
-    
+
     const [subjects, setSubjects] = useState([]);
     const [loading, setLoading] = useState(true);
-    
 
-    const reloadSubjectCallback=useCallback(async() => {
+
+    const reloadSubjectCallback = useCallback(async () => {
         const updateSubjects = async () => {
             const subjectList = await subjectsManager.getSubjects();
-            
+
             setSubjects(subjectList)
             setLoading(false);
         }
@@ -23,9 +23,9 @@ const SubjectCardContainer = () => {
         console.log("YOU CALL ME")
     }, []);
 
-    useEffect(()=>{
+    useEffect(() => {
         reloadSubjectCallback();
-    },[ reloadSubjectCallback])
+    }, [reloadSubjectCallback])
     if (loading) {
         return <div>Obteniendo materias...</div>;
     }
