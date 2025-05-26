@@ -33,7 +33,7 @@ import {
               Informes innovadores
             </Button>
             <Button color="inherit" onClick={() => navigate('/my-plans')}>
-              Mis notas
+              Mis planes actuales
             </Button>
             <Button color="inherit" onClick={() => navigate('/subjects')}>
               Materias del semestre

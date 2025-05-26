@@ -8,6 +8,7 @@ import Subjects from './pages/Subjects';
 import Settings from './pages/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
 import Course from './pages/Course';
+import PlanDetails from './pages/PlanDetails';
 
 import Plans from './pages/Plans'
 
@@ -39,6 +40,14 @@ function App() {
           element={
             <ProtectedRoute>
               <MyPlans />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/plan-details/:planId"
+          element={
+            <ProtectedRoute>
+              <PlanDetails />
             </ProtectedRoute>
           }
         />
