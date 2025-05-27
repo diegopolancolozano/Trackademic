@@ -22,13 +22,26 @@ import mongo from './mongoClient'
 
 const API_URL = 'https://trackademifunction.vercel.app/api/global_plans';
 
+const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+};
+
 const plansManager = {};
 
 // Get all plans or filter by subject_id
 plansManager.getPlans = async (subject_id = null) => {
     try {
         const url = subject_id ? `${API_URL}?subject_id=${subject_id}` : API_URL;
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            method: 'GET',
+            mode: 'cors',
+            headers: defaultHeaders,
+            credentials: 'omit'
+        });
         if (!response.ok) {
             throw new Error('Error fetching plans');
         }
@@ -44,9 +57,9 @@ plansManager.createPlan = async (planData) => {
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            mode: 'cors',
+            headers: defaultHeaders,
+            credentials: 'omit',
             body: JSON.stringify(planData),
         });
         if (!response.ok) {
@@ -64,9 +77,9 @@ plansManager.updatePlan = async (id, updateData) => {
     try {
         const response = await fetch(`${API_URL}?id=${id}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            mode: 'cors',
+            headers: defaultHeaders,
+            credentials: 'omit',
             body: JSON.stringify(updateData),
         });
         if (!response.ok) {
@@ -84,6 +97,9 @@ plansManager.deletePlan = async (id) => {
     try {
         const response = await fetch(`${API_URL}?id=${id}`, {
             method: 'DELETE',
+            mode: 'cors',
+            headers: defaultHeaders,
+            credentials: 'omit'
         });
         if (!response.ok) {
             throw new Error('Error deleting plan');
