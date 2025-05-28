@@ -9,8 +9,8 @@ import Settings from './pages/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
 import Course from './pages/Course';
 import PlanDetails from './pages/PlanDetails';
-
-import Plans from './pages/Plans'
+import Plans from './pages/Plans';
+import CreatePlan from './pages/CreatePlan';
 
 function App() {
   return (
@@ -59,16 +59,22 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
-          path="/subjects/:subjectId/plans"
+          path="/subjects/:courseId/plans"
           element={
             <ProtectedRoute>
-              <Plans/>
+              <Plans />
             </ProtectedRoute>
           }
         />
-
+        <Route
+          path="/subjects/:courseId/plans/create"
+          element={
+            <ProtectedRoute>
+              <CreatePlan />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/settings"
           element={

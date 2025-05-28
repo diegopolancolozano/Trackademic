@@ -19,7 +19,15 @@
 // # 5. DELETE - Eliminar plan local
 // curl -X DELETE "https://trackademifunction.vercel.app/api/local_plans?id=6831659e3c3688153bc68b67"
 
-const API_URL = "https://trackademifunction.vercel.app/api/local_plans";
+const API_URL = 'https://trackademifunction.vercel.app/api/local_plans';
+
+const defaultHeaders = {
+  'Content-Type': 'application/json',
+  'Accept': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type'
+};
 
 const localPlansManager = {
   /**
@@ -29,7 +37,12 @@ const localPlansManager = {
    */
   getUserPlans: async (userId) => {
     try {
-      const response = await fetch(`${API_URL}?user_id=${userId}`);
+      const response = await fetch(`${API_URL}?user_id=${userId}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: defaultHeaders,
+        credentials: 'omit'
+      });
       
       if (!response.ok) {
         throw new Error(`Error fetching user plans: ${response.statusText}`);
@@ -51,9 +64,9 @@ const localPlansManager = {
     try {
       const response = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        mode: 'cors',
+        headers: defaultHeaders,
+        credentials: 'omit',
         body: JSON.stringify(plan),
       });
       
@@ -78,9 +91,9 @@ const localPlansManager = {
     try {
       const response = await fetch(`${API_URL}?id=${planId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        mode: 'cors',
+        headers: defaultHeaders,
+        credentials: 'omit',
         body: JSON.stringify(updatedPlan),
       });
       
@@ -104,6 +117,9 @@ const localPlansManager = {
     try {
       const response = await fetch(`${API_URL}?id=${planId}`, {
         method: "DELETE",
+        mode: 'cors',
+        headers: defaultHeaders,
+        credentials: 'omit'
       });
       
       if (!response.ok) {
@@ -150,7 +166,12 @@ const localPlansManager = {
   updateGrade: async (planId, activityName, grade) => {
     try {
       // Get the current plan
-      const response = await fetch(`${API_URL}?id=${planId}`);
+      const response = await fetch(`${API_URL}?id=${planId}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: defaultHeaders,
+        credentials: 'omit'
+      });
       
       if (!response.ok) {
         throw new Error(`Error fetching plan: ${response.statusText}`);
