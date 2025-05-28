@@ -37,18 +37,59 @@ export default function Register() {
   });
 
   useEffect(() => {
-    const fetchOptions = async () => {
+    const fetchFaculties = async () => {
       const { data: facultiesData } = await supabase.from('faculties').select('*');
-      const { data: areasData } = await supabase.from('areas').select('*');
-      const { data: programsData } = await supabase.from('programs').select('*');
-
       setFaculties(facultiesData || []);
-      setAreas(areasData || []);
-      setPrograms(programsData || []);
     };
 
-    fetchOptions();
+    fetchFaculties();
   }, []);
+
+  useEffect(() => {
+    const fetchAreasByFaculty = async () => {
+      if (!faculty) {
+        setAreas([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('areas')
+        .select('*')
+        .eq('faculty_code', faculty);
+
+      if (error) {
+        console.error('Error fetching areas:', error.message);
+        setAreas([]);
+      } else {
+        setAreas(data || []);
+      }
+    };
+
+    fetchAreasByFaculty();
+  }, [faculty]);
+
+  useEffect(() => {
+    const fetchProgramsByArea = async () => {
+      if (!area) {
+        setPrograms([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('programs')
+        .select('*')
+        .eq('area_code', area);
+
+      if (error) {
+        console.error('Error fetching programs:', error.message);
+        setPrograms([]);
+      } else {
+        setPrograms(data || []);
+      }
+    };
+
+    fetchProgramsByArea();
+  }, [area]);
 
   const handleRegister = async () => {
     const { error: signUpError } = await supabase.auth.signUp({ email, password });
@@ -165,14 +206,14 @@ export default function Register() {
             value={semester}
             inputProps={{ min: 1, max: 10 }}
             onChange={(e) => {
-                const value = parseInt(e.target.value, 10);
-                if (value >= 1 && value <= 10) {
+              const value = parseInt(e.target.value, 10);
+              if (value >= 1 && value <= 10) {
                 setSemester(e.target.value);
-                } else if (e.target.value === '') {
+              } else if (e.target.value === '') {
                 setSemester('');
-                }
+              }
             }}
-            />
+          />
 
           <TextField
             fullWidth
