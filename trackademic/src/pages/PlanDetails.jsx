@@ -33,7 +33,15 @@ export default function PlanDetails() {
         try {
           // Esta API debería devolver un solo plan por ID
           // Nota: Esta implementación podría requerir ajustes dependiendo de la API real
-          const response = await fetch(`https://trackademifunction.vercel.app/api/local_plans?id=${planId}`);
+          const response = await fetch(`https://trackademifunction.vercel.app/api/local_plans?id=${planId}`, {
+            method: 'GET',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            credentials: 'omit'
+          });
           
           if (!response.ok) {
             throw new Error(`Error al obtener detalles del plan: ${response.statusText}`);
