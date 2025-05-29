@@ -14,6 +14,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Navbar from '../components/Navbar';
 import CreatePlanForm from '../components/CreatePlanForm';
 import localPlansManager from '../services/localPlansManager';
+import plansManager from '../services/globalPlansManager';
 import { supabase } from '../services/supabaseClient';
 
 export default function CreatePlan() {
@@ -59,8 +60,9 @@ export default function CreatePlan() {
 
       const planData = {
         ...formData,
-        courseId,
-        courseName: courseInfo.name,
+        subject_id: courseId,
+        subject_name: courseInfo.name,
+        titulo: `Plan de ${courseInfo.name} - ${formData.group}`,
         createdBy: userData.user.id,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -70,11 +72,13 @@ export default function CreatePlan() {
         }))
       };
 
-      await localPlansManager.addPlan(planData);
+      // Use the appropriate manager based on whether the plan is global or local
+      const manager = formData.isGlobal ? plansManager : localPlansManager;
+      await manager.createPlan(planData);
       
       setSnackbar({
         open: true,
-        message: 'Plan creado exitosamente',
+        message: `Plan ${formData.isGlobal ? 'global' : 'personal'} creado exitosamente`,
         severity: 'success'
       });
 
