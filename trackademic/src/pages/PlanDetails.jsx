@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import Comments from '../components/Comments';
 import { 
   Container, 
   Typography, 
@@ -18,7 +19,8 @@ import {
   TextField,
   Snackbar,
   IconButton,
-  Tooltip
+  Tooltip,
+  Divider
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
@@ -33,6 +35,7 @@ export default function PlanDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [grades, setGrades] = useState({});
+  const [savedGrades, setSavedGrades] = useState({});
   const [savingGrades, setSavingGrades] = useState({});
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -117,6 +120,11 @@ export default function PlanDetails() {
         ...prev,
         [activityName]: value
       }));
+      // Marcar la nota como no guardada cuando se modifica
+      setSavedGrades(prev => ({
+        ...prev,
+        [activityName]: false
+      }));
     }
   };
 
@@ -136,10 +144,8 @@ export default function PlanDetails() {
         throw new Error("La nota debe estar entre 0 y 5");
       }
       
-      // Mostrar indicador de carga
       setSavingGrades(prev => ({ ...prev, [activityName]: true }));
 
-      // Actualizar el plan en el estado antes de la llamada al API
       const updatedPlan = {
         ...plan,
         activities: plan.activities.map(activity => 
@@ -151,6 +157,12 @@ export default function PlanDetails() {
       setPlan(updatedPlan);
 
       await localPlansManager.updateGrade(planId, activityName, grade);
+
+      // Marcar la nota como guardada
+      setSavedGrades(prev => ({
+        ...prev,
+        [activityName]: true
+      }));
 
       setSnackbar({
         open: true,
@@ -339,14 +351,22 @@ export default function PlanDetails() {
                         <TableCell align="right">
                           {savingGrades[activity.name] ? (
                             <CircularProgress size={24} />
+                          ) : savedGrades[activity.name] ? (
+                            <Tooltip title="Nota guardada">
+                              <IconButton color="success">
+                                <CheckCircleIcon />
+                              </IconButton>
+                            </Tooltip>
                           ) : (
-                            <IconButton
-                              color="primary"
-                              onClick={() => handleSaveGrade(activity.name)}
-                              disabled={!grades[activity.name]}
-                            >
-                              <SaveIcon />
-                            </IconButton>
+                            <Tooltip title="Guardar nota">
+                              <IconButton
+                                color="primary"
+                                onClick={() => handleSaveGrade(activity.name)}
+                                disabled={!grades[activity.name]}
+                              >
+                                <SaveIcon />
+                              </IconButton>
+                            </Tooltip>
                           )}
                         </TableCell>
                       </TableRow>
@@ -368,6 +388,10 @@ export default function PlanDetails() {
               </Table>
             </TableContainer>
           </Box>
+
+          <Divider sx={{ my: 4 }} />
+          
+          <Comments planId={planId} />
         </Paper>
 
         <Snackbar

@@ -3,24 +3,20 @@ import {
   Box,
   TextField,
   Button,
-  FormControl,
-  FormControlLabel,
-  Switch,
   Stack,
   Typography,
   IconButton,
   Paper,
-  Tooltip,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import InfoIcon from '@mui/icons-material/Info';
 
 export default function CreatePlanForm({ onSubmit, initialData = {} }) {
   const [formData, setFormData] = useState({
+    titulo: initialData.titulo || '',
     group: initialData.group || '',
     professor: initialData.professor || '',
-    isGlobal: initialData.isGlobal || false,
+    isGlobal: true, // Always true now
     activities: initialData.activities || [],
   });
 
@@ -34,13 +30,6 @@ export default function CreatePlanForm({ onSubmit, initialData = {} }) {
     setFormData(prev => ({
       ...prev,
       [name]: value
-    }));
-  };
-
-  const handleSwitchChange = (e) => {
-    setFormData(prev => ({
-      ...prev,
-      isGlobal: e.target.checked
     }));
   };
 
@@ -82,6 +71,16 @@ export default function CreatePlanForm({ onSubmit, initialData = {} }) {
         <TextField
           required
           fullWidth
+          label="Nombre del Plan"
+          name="titulo"
+          value={formData.titulo}
+          onChange={handleChange}
+          placeholder="ej: Plan de evaluación primer corte"
+        />
+
+        <TextField
+          required
+          fullWidth
           label="Grupo (ej: G1)"
           name="group"
           value={formData.group}
@@ -97,26 +96,6 @@ export default function CreatePlanForm({ onSubmit, initialData = {} }) {
           value={formData.professor}
           onChange={handleChange}
         />
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={formData.isGlobal}
-                onChange={handleSwitchChange}
-                name="isGlobal"
-              />
-            }
-            label={
-              <Typography>
-                {formData.isGlobal ? "Plan Global (visible para todos)" : "Plan Personal (solo visible para ti)"}
-              </Typography>
-            }
-          />
-          <Tooltip title="Un plan global es visible y copiable por todos los estudiantes. Un plan personal es solo para tu uso." arrow>
-            <InfoIcon color="action" sx={{ cursor: 'help' }} />
-          </Tooltip>
-        </Box>
 
         <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
           Actividades de Evaluación
