@@ -86,16 +86,32 @@ const localPlansManager = {
    */
   updatePlan: async (planId, updatedPlan) => {
     try {
+      // Asegurarnos de que el plan tiene el formato correcto
+      const planToUpdate = {
+        user_id: updatedPlan.user_id,
+        titulo: updatedPlan.titulo,
+        subject_id: updatedPlan.subject_id,
+        subject_name: updatedPlan.subject_name,
+        professor: updatedPlan.professor,
+        group: updatedPlan.group,
+        activities: updatedPlan.activities.map(activity => ({
+          name: activity.name,
+          weight: parseFloat(activity.weight),
+          grade: activity.grade !== undefined ? parseFloat(activity.grade) : 0
+        }))
+      };
+
       const response = await fetch(`${API_URL}?id=${planId}`, {
         method: "PUT",
         mode: 'cors',
         headers: defaultHeaders,
         credentials: 'omit',
-        body: JSON.stringify(updatedPlan),
+        body: JSON.stringify(planToUpdate),
       });
       
       if (!response.ok) {
-        throw new Error(`Error updating plan: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Error updating plan: ${errorText}`);
       }
       
       return await response.json();
@@ -184,13 +200,24 @@ const localPlansManager = {
       // Find the activity and update the grade
       const updatedActivities = plan.activities.map(activity => {
         if (activity.name === activityName) {
-          return { ...activity, grade: Number(grade) };
+          return { 
+            ...activity, 
+            grade: parseFloat(grade),
+            weight: parseFloat(activity.weight) // Asegurarnos que el peso es número
+          };
         }
-        return activity;
+        return {
+          ...activity,
+          weight: parseFloat(activity.weight), // Asegurarnos que el peso es número
+          grade: activity.grade !== undefined ? parseFloat(activity.grade) : 0
+        };
       });
       
       // Update the plan with the new activities
-      const updatedPlan = { ...plan, activities: updatedActivities };
+      const updatedPlan = { 
+        ...plan,
+        activities: updatedActivities
+      };
       
       // Save the updated plan
       return await localPlansManager.updatePlan(planId, updatedPlan);
@@ -214,19 +241,22 @@ const localPlansManager = {
     let weightedSum = 0;
     
     plan.activities.forEach(activity => {
-      const weight = parseFloat(activity.weight) / 100;
-      const grade = parseFloat(activity.grade || 0);
+      const weight = parseFloat(activity.weight) / 100; // Convertir porcentaje a decimal
+      const grade = activity.grade !== undefined ? parseFloat(activity.grade) : 0;
       
-      totalWeight += weight;
-      weightedSum += weight * grade;
+      if (!isNaN(weight) && !isNaN(grade)) {
+        totalWeight += weight;
+        weightedSum += weight * grade;
+      }
     });
     
-    // Normalize if weights don't sum to 1
-    if (totalWeight > 0 && totalWeight !== 1) {
-      return weightedSum / totalWeight;
+    // Si no hay pesos válidos, retornar 0
+    if (totalWeight === 0) {
+      return 0;
     }
     
-    return weightedSum;
+    // Calcular el promedio ponderado
+    return weightedSum / totalWeight;
   }
 };
 

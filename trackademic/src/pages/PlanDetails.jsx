@@ -8,9 +8,21 @@ import {
   Button,
   Box,
   CircularProgress,
-  Alert
+  Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Snackbar,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SaveIcon from '@mui/icons-material/Save';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { supabase } from '../services/supabaseClient';
 import localPlansManager from '../services/localPlansManager';
 
@@ -20,6 +32,13 @@ export default function PlanDetails() {
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [grades, setGrades] = useState({});
+  const [savingGrades, setSavingGrades] = useState({});
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   useEffect(() => {
     const fetchPlanDetails = async () => {
@@ -31,8 +50,6 @@ export default function PlanDetails() {
         }
         
         try {
-          // Esta API debería devolver un solo plan por ID
-          // Nota: Esta implementación podría requerir ajustes dependiendo de la API real
           const response = await fetch(`https://trackademifunction.vercel.app/api/local_plans?id=${planId}`, {
             method: 'GET',
             mode: 'cors',
@@ -53,7 +70,24 @@ export default function PlanDetails() {
             throw new Error("No se encontró el plan solicitado");
           }
           
-          setPlan(plans[0]);
+          const fetchedPlan = plans[0];
+          
+          // Asegurarse de que activities existe
+          if (!fetchedPlan.activities) {
+            fetchedPlan.activities = [];
+          }
+          
+          setPlan(fetchedPlan);
+          
+          // Inicializar las notas desde las actividades existentes
+          const initialGrades = {};
+          fetchedPlan.activities.forEach(activity => {
+            if (activity && activity.name) {
+              initialGrades[activity.name] = activity.grade || '';
+            }
+          });
+          setGrades(initialGrades);
+          
         } catch (apiError) {
           console.error("Error fetching plan details:", apiError);
           setError(apiError.message);
@@ -71,6 +105,96 @@ export default function PlanDetails() {
 
   const handleBack = () => {
     navigate(-1);
+  };
+
+  const handleGradeChange = (activityName, value) => {
+    if (!activityName) return;
+    
+    // Validar que el valor sea un número entre 0 y 5
+    const numValue = parseFloat(value);
+    if (value === '' || (numValue >= 0 && numValue <= 5)) {
+      setGrades(prev => ({
+        ...prev,
+        [activityName]: value
+      }));
+    }
+  };
+
+  const handleSaveGrade = async (activityName) => {
+    try {
+      const gradeValue = grades[activityName];
+      if (gradeValue === '' || gradeValue === undefined) {
+        throw new Error("Por favor ingresa una nota válida");
+      }
+
+      const grade = parseFloat(gradeValue);
+      if (isNaN(grade)) {
+        throw new Error("La nota debe ser un número válido");
+      }
+
+      if (grade < 0 || grade > 5) {
+        throw new Error("La nota debe estar entre 0 y 5");
+      }
+      
+      // Mostrar indicador de carga
+      setSavingGrades(prev => ({ ...prev, [activityName]: true }));
+
+      // Actualizar el plan en el estado antes de la llamada al API
+      const updatedPlan = {
+        ...plan,
+        activities: plan.activities.map(activity => 
+          activity.name === activityName 
+            ? { ...activity, grade }
+            : activity
+        )
+      };
+      setPlan(updatedPlan);
+
+      await localPlansManager.updateGrade(planId, activityName, grade);
+
+      setSnackbar({
+        open: true,
+        message: 'Nota guardada exitosamente',
+        severity: 'success'
+      });
+
+      setTimeout(() => {
+        setSavingGrades(prev => ({ ...prev, [activityName]: false }));
+      }, 1000);
+    } catch (err) {
+      console.error("Error saving grade:", err);
+      setSavingGrades(prev => ({ ...prev, [activityName]: false }));
+      setSnackbar({
+        open: true,
+        message: `Error al guardar la nota: ${err.message}`,
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
+  const calculateWeightedAverage = () => {
+    if (!plan || !plan.activities || plan.activities.length === 0) return 0;
+    
+    let totalWeight = 0;
+    let weightedSum = 0;
+    
+    plan.activities.forEach(activity => {
+      const weight = parseFloat(activity.weight) / 100;
+      const grade = activity.grade !== undefined ? parseFloat(activity.grade) : 0;
+      
+      if (!isNaN(weight) && !isNaN(grade)) {
+        totalWeight += weight;
+        weightedSum += weight * grade;
+      }
+    });
+    
+    if (totalWeight === 0) return 0;
+    
+    return (weightedSum / totalWeight).toFixed(2);
   };
 
   if (loading) {
@@ -121,6 +245,39 @@ export default function PlanDetails() {
     );
   }
 
+  // Si no hay actividades, mostrar un mensaje
+  if (!plan.activities || plan.activities.length === 0) {
+    return (
+      <>
+        <Navbar />
+        <Container sx={{ mt: 4, mb: 4 }}>
+          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Button 
+              startIcon={<ArrowBackIcon />}
+              onClick={handleBack}
+            >
+              Volver
+            </Button>
+          </Box>
+
+          <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
+            <Typography variant="h4" gutterBottom>
+              {plan.titulo}
+            </Typography>
+            
+            <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+              {plan.subject_name} {plan.professor ? `- ${plan.professor}` : ''}
+            </Typography>
+
+            <Alert severity="info" sx={{ mt: 4 }}>
+              Este plan no tiene actividades definidas. Por favor, agrega actividades al plan.
+            </Alert>
+          </Paper>
+        </Container>
+      </>
+    );
+  }
+
   return (
     <>
       <Navbar />
@@ -140,18 +297,88 @@ export default function PlanDetails() {
           </Typography>
           
           <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-            {plan.subject_name} - {plan.professor || 'Profesor no especificado'}
+            {plan.subject_name} {plan.professor ? `- ${plan.professor}` : ''}
           </Typography>
-          
-          <Typography variant="body1" sx={{ mt: 4, mb: 2 }}>
-            Esta página será implementada por otro desarrollador para permitir la edición detallada
-            del plan de evaluación, incluyendo modificación de notas, actividades, pesos y más.
-          </Typography>
-          
-          <Alert severity="info" sx={{ mt: 3 }}>
-            Funcionalidad en desarrollo. La edición completa del plan estará disponible pronto.
-          </Alert>
+
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              Actividades y Notas
+            </Typography>
+            
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Actividad</TableCell>
+                    <TableCell align="right">Peso (%)</TableCell>
+                    <TableCell align="right">Nota (0-5)</TableCell>
+                    <TableCell align="right">Acciones</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {plan.activities.map((activity) => (
+                    activity && activity.name ? (
+                      <TableRow key={activity.name}>
+                        <TableCell>{activity.name}</TableCell>
+                        <TableCell align="right">{activity.weight}%</TableCell>
+                        <TableCell align="right">
+                          <TextField
+                            type="number"
+                            value={grades[activity.name] || ''}
+                            onChange={(e) => handleGradeChange(activity.name, e.target.value)}
+                            inputProps={{ 
+                              min: 0, 
+                              max: 5, 
+                              step: 0.1,
+                              style: { textAlign: 'right' }
+                            }}
+                            size="small"
+                            sx={{ width: '80px' }}
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          {savingGrades[activity.name] ? (
+                            <CircularProgress size={24} />
+                          ) : (
+                            <IconButton
+                              color="primary"
+                              onClick={() => handleSaveGrade(activity.name)}
+                              disabled={!grades[activity.name]}
+                            >
+                              <SaveIcon />
+                            </IconButton>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ) : null
+                  ))}
+                  <TableRow>
+                    <TableCell colSpan={2}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                        Promedio Ponderado
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right" colSpan={2}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                        {calculateWeightedAverage()}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
         </Paper>
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+        >
+          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Container>
     </>
   );

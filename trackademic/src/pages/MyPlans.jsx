@@ -169,12 +169,6 @@ export default function MyPlans() {
                     </Typography>
 
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                      <Chip 
-                        label={`${plan.credits || '0'} créditos`}
-                        variant="outlined"
-                        size="small"
-                        color="primary"
-                      />
                       <Chip
                         label={`Promedio: ${calculateAverage(plan)}`}
                         color="primary"
