@@ -4,33 +4,47 @@ import {
   TextField,
   Button,
   Typography,
-  Paper,
   Avatar,
-  Stack,
+  Paper,
+  IconButton,
   CircularProgress,
   Alert,
-  IconButton
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import { supabase } from '../services/supabaseClient';
-
-const API_URL = 'http://localhost:5000'; // URL del backend
+import commentsManager from '../services/commentsManager';
 
 export default function Comments({ planId }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editingComment, setEditingComment] = useState(null);
+  const [editedContent, setEditedContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+    // Get current user on component mount
+    supabase.auth.getUser().then(({ data: { user } }) => {
       setCurrentUser(user);
+    });
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setCurrentUser(session?.user ?? null);
+    });
+
+    return () => {
+      subscription?.unsubscribe();
     };
-    fetchUser();
   }, []);
 
   useEffect(() => {
@@ -39,13 +53,8 @@ export default function Comments({ planId }) {
 
   const fetchComments = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/comments/${planId}`);
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error);
-      }
-      const data = await response.json();
-      setComments(data);
+      const fetchedComments = await commentsManager.getComments(planId);
+      setComments(fetchedComments);
     } catch (err) {
       console.error('Error fetching comments:', err);
       setError('Error al cargar los comentarios');
@@ -56,30 +65,24 @@ export default function Comments({ planId }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newComment.trim() || !currentUser) return;
+    if (!newComment.trim() || submitting) return;
 
     setSubmitting(true);
     try {
-      const response = await fetch(`${API_URL}/api/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          planId,
-          userId: currentUser.id,
-          userName: currentUser.user_metadata?.full_name || 'Usuario',
-          content: newComment.trim()
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error);
+      if (!currentUser) {
+        throw new Error('Usuario no autenticado');
       }
 
+      const commentData = {
+        planId,
+        userId: currentUser.id,
+        userName: currentUser.email.split('@')[0],
+        content: newComment.trim()
+      };
+
+      await commentsManager.addComment(commentData);
       setNewComment('');
-      await fetchComments();
+      fetchComments();
     } catch (err) {
       console.error('Error adding comment:', err);
       setError('Error al agregar el comentario');
@@ -88,35 +91,52 @@ export default function Comments({ planId }) {
     }
   };
 
-  const handleDelete = async (commentId) => {
-    if (!currentUser) return;
+  const handleEdit = (comment) => {
+    setEditingComment(comment);
+    setEditedContent(comment.content);
+  };
 
+  const handleSaveEdit = async () => {
+    if (!editedContent.trim() || submitting) return;
+
+    setSubmitting(true);
     try {
-      const response = await fetch(`${API_URL}/api/comments/${commentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: currentUser.id
-        })
+      await commentsManager.updateComment(editingComment._id, {
+        content: editedContent.trim()
       });
+      setEditingComment(null);
+      fetchComments();
+    } catch (err) {
+      console.error('Error updating comment:', err);
+      setError('Error al actualizar el comentario');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error);
-      }
+  const handleDelete = (comment) => {
+    setCommentToDelete(comment);
+    setDeleteDialogOpen(true);
+  };
 
-      await fetchComments();
+  const confirmDelete = async () => {
+    setSubmitting(true);
+    try {
+      await commentsManager.deleteComment(commentToDelete._id);
+      fetchComments();
     } catch (err) {
       console.error('Error deleting comment:', err);
       setError('Error al eliminar el comentario');
+    } finally {
+      setSubmitting(false);
+      setDeleteDialogOpen(false);
+      setCommentToDelete(null);
     }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
         <CircularProgress />
       </Box>
     );
@@ -135,71 +155,103 @@ export default function Comments({ planId }) {
       )}
 
       <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }}>
-        <Stack direction="row" spacing={2}>
-          <TextField
-            fullWidth
-            placeholder="Escribe un comentario..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            disabled={submitting || !currentUser}
-            multiline
-            rows={2}
-          />
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={!newComment.trim() || submitting || !currentUser}
-            endIcon={submitting ? <CircularProgress size={20} /> : <SendIcon />}
-          >
-            Enviar
-          </Button>
-        </Stack>
+        <TextField
+          fullWidth
+          multiline
+          rows={3}
+          variant="outlined"
+          placeholder="Escribe un comentario..."
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          error={newComment.length > 1000}
+          helperText={newComment.length > 1000 ? 'El comentario no puede exceder 1000 caracteres' : ''}
+          disabled={submitting}
+        />
+        <Button
+          type="submit"
+          variant="contained"
+          sx={{ mt: 1 }}
+          disabled={!newComment.trim() || newComment.length > 1000 || submitting}
+        >
+          {submitting ? <CircularProgress size={24} /> : 'Comentar'}
+        </Button>
       </Box>
 
-      <Stack spacing={2}>
-        {comments.map((comment) => (
-          <Paper key={comment._id} sx={{ p: 2 }}>
-            <Stack direction="row" spacing={2} alignItems="start">
-              <Avatar>
-                {comment.userName[0]}
-              </Avatar>
-              <Box sx={{ flex: 1 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                    {comment.userName}
-                  </Typography>
-                  {currentUser && currentUser.id === comment.userId && (
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => handleDelete(comment._id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  )}
-                </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {new Date(comment.createdAt).toLocaleDateString('es-ES', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </Typography>
-                <Typography variant="body1">
-                  {comment.content}
-                </Typography>
+      {comments.map((comment) => (
+        <Paper key={comment._id} sx={{ p: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <Avatar sx={{ mr: 1 }}>
+              {comment.userName ? comment.userName[0].toUpperCase() : '?'}
+            </Avatar>
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography variant="subtitle1">{comment.userName}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {new Date(comment.createdAt).toLocaleString()}
+                {comment.isEdited && ' (editado)'}
+              </Typography>
+            </Box>
+            {comment.userId === currentUser?.id && (
+              <Box>
+                <IconButton size="small" onClick={() => handleEdit(comment)}>
+                  <EditIcon />
+                </IconButton>
+                <IconButton size="small" onClick={() => handleDelete(comment)}>
+                  <DeleteIcon />
+                </IconButton>
               </Box>
-            </Stack>
-          </Paper>
-        ))}
-        {comments.length === 0 && (
-          <Typography color="text.secondary" align="center">
-            No hay comentarios aún. ¡Sé el primero en comentar!
-          </Typography>
-        )}
-      </Stack>
+            )}
+          </Box>
+          
+          {editingComment?._id === comment._id ? (
+            <Box>
+              <TextField
+                fullWidth
+                multiline
+                value={editedContent}
+                onChange={(e) => setEditedContent(e.target.value)}
+                error={editedContent.length > 1000}
+                helperText={editedContent.length > 1000 ? 'El comentario no puede exceder 1000 caracteres' : ''}
+                disabled={submitting}
+              />
+              <Box sx={{ mt: 1 }}>
+                <Button
+                  variant="contained"
+                  onClick={handleSaveEdit}
+                  disabled={!editedContent.trim() || editedContent.length > 1000 || submitting}
+                  sx={{ mr: 1 }}
+                >
+                  {submitting ? <CircularProgress size={24} /> : 'Guardar'}
+                </Button>
+                <Button onClick={() => setEditingComment(null)}>
+                  Cancelar
+                </Button>
+              </Box>
+            </Box>
+          ) : (
+            <Typography>{comment.content}</Typography>
+          )}
+        </Paper>
+      ))}
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Confirmar eliminación</DialogTitle>
+        <DialogContent>
+          ¿Estás seguro de que deseas eliminar este comentario?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
+          <Button
+            onClick={confirmDelete}
+            color="error"
+            disabled={submitting}
+          >
+            {submitting ? <CircularProgress size={24} /> : 'Eliminar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 } 

@@ -150,8 +150,8 @@ export default function MyPlans() {
         ) : (
           <Grid container spacing={3}>
             {plans.map((plan) => (
-              <Grid item xs={12} sm={6} md={4} key={plan._id}>
-                <Card elevation={3} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Grid key={plan._id} xs={12} sm={6} md={4}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                   <CardContent sx={{ flexGrow: 1 }}>
                     <Typography variant="h5" component="div" gutterBottom sx={{ fontWeight: 'bold' }}>
                       {plan.titulo}
