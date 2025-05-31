@@ -145,6 +145,14 @@ export default function Register() {
     >
       <Container maxWidth="xs">
         <Paper elevation={4} sx={{ padding: 4, borderRadius: 3 }}>
+          <Box sx={{ textAlign: 'center', mb: 2 }}>
+            <img
+              src="/logo.png"
+              alt="Trackademic logo"
+              style={{ width: 100, height: 100 }}
+            />
+          </Box>
+
           <Typography variant="h4" align="center" gutterBottom>
             Registro
           </Typography>

@@ -11,7 +11,7 @@ import {
   Alert,
   Box,
 } from '@mui/material';
-import {user} from '../services/infoUser'
+import { user } from '../services/infoUser';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -32,17 +32,16 @@ export default function Login() {
       setSnackbar({ open: true, message: error.message, severity: 'error' });
     } else {
       user.init(email.trim());
-      
+
       setSnackbar({
         open: true,
         message: 'Inicio de sesión exitoso',
         severity: 'success',
       });
+
       setTimeout(() => {
         window.location.href = '/dashboard';
       }, 1500);
-      
-      
     }
   };
 
@@ -58,6 +57,14 @@ export default function Login() {
     >
       <Container maxWidth="xs">
         <Paper elevation={4} sx={{ padding: 4, borderRadius: 3 }}>
+          <Box sx={{ textAlign: 'center', mb: 2 }}>
+            <img
+              src="/logo.png"
+              alt="Trackademic logo"
+              style={{ width: 100, height: 100 }}
+            />
+          </Box>
+
           <Typography variant="h4" align="center" gutterBottom>
             Iniciar Sesión
           </Typography>
