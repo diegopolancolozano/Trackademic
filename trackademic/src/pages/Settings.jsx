@@ -17,7 +17,8 @@ import {
   DialogContentText,
   DialogTitle,
   Snackbar,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { supabase } from '../services/supabaseClient';
 import { user } from '../services/infoUser';
@@ -40,27 +41,97 @@ export default function Settings() {
     severity: 'info',
   });
   
-  // Load options and current user data
+  const [loading, setLoading] = useState(true);
+  
+  // Load all data at once in a single effect
   useEffect(() => {
-    const fetchOptions = async () => {
-      // Get options
-      const { data: facultiesData } = await supabase.from('faculties').select('*');
-      const { data: areasData } = await supabase.from('areas').select('*');
-      const { data: programsData } = await supabase.from('programs').select('*');
-
-      setFaculties(facultiesData || []);
-      setAreas(areasData || []);
-      setPrograms(programsData || []);
-      
-      // Get current user settings
-      setFaculty(user.getFaculty());
-      setArea(user.getArea());
-      setProgram(user.getProgram());
-      setSemester(user.getSemester());
+    const loadAllData = async () => {
+      try {
+        setLoading(true);
+        
+        // Get user settings first
+        const currentFaculty = user.getFaculty();
+        const currentArea = user.getArea();
+        const currentProgram = user.getProgram();
+        const currentSemester = user.getSemester();
+        
+        // Load all required data in parallel
+        const [facultiesResponse, areasResponse, programsResponse] = await Promise.all([
+          // Get all faculties
+          supabase.from('faculties').select('*'),
+          
+          // Get areas for this faculty
+          currentFaculty ? 
+            supabase.from('areas').select('*').eq('faculty_code', currentFaculty) : 
+            { data: [] },
+          
+          // Get programs for this area
+          currentArea ? 
+            supabase.from('programs').select('*').eq('area_code', currentArea) : 
+            { data: [] }
+        ]);
+        
+        // Update all state at once to prevent flickering
+        setFaculties(facultiesResponse.data || []);
+        setAreas(areasResponse.data || []);
+        setPrograms(programsResponse.data || []);
+        
+        setFaculty(currentFaculty);
+        setArea(currentArea);
+        setProgram(currentProgram);
+        setSemester(currentSemester);
+        
+      } catch (error) {
+        console.error("Error loading data:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    fetchOptions();
+    loadAllData();
   }, []);
+
+  // Handle manual faculty change
+  const handleFacultyChange = async (newFaculty) => {
+    setFaculty(newFaculty);
+    setArea('');
+    setProgram('');
+    setAreas([]);
+    setPrograms([]);
+    
+    if (newFaculty) {
+      try {
+        const { data } = await supabase
+          .from('areas')
+          .select('*')
+          .eq('faculty_code', newFaculty);
+          
+        setAreas(data || []);
+      } catch (error) {
+        console.error('Error fetching areas:', error);
+      }
+    }
+  };
+  
+  // Handle manual area change
+  const handleAreaChange = async (newArea) => {
+    setArea(newArea);
+    setProgram('');
+    setPrograms([]);
+    
+    if (newArea) {
+      try {
+        const { data } = await supabase
+          .from('programs')
+          .select('*')
+          .eq('area_code', newArea);
+          
+        setPrograms(data || []);
+      } catch (error) {
+        console.error('Error fetching programs:', error);
+      }
+    }
+  };
 
   const handleUpdateProfile = async () => {
     setDialogOpen(false);
@@ -133,79 +204,87 @@ export default function Settings() {
             Modificar tu facultad, área, programa o semestre eliminará todos tus planes de evaluación actuales.
           </Typography>
           
-          <Box component="form" sx={{ mt: 3 }}>
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Facultad</InputLabel>
-              <Select 
-                value={faculty} 
-                onChange={(e) => setFaculty(e.target.value)} 
-                label="Facultad"
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box component="form" sx={{ mt: 3 }}>
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Facultad</InputLabel>
+                <Select 
+                  value={faculty} 
+                  onChange={(e) => handleFacultyChange(e.target.value)} 
+                  label="Facultad"
+                >
+                  {faculties.map((fac) => (
+                    <MenuItem key={fac.code} value={fac.code}>
+                      {fac.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Área</InputLabel>
+                <Select 
+                  value={area} 
+                  onChange={(e) => handleAreaChange(e.target.value)} 
+                  label="Área"
+                  disabled={!faculty}
+                >
+                  {areas.map((a) => (
+                    <MenuItem key={a.code} value={a.code}>
+                      {a.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Programa</InputLabel>
+                <Select 
+                  value={program} 
+                  onChange={(e) => setProgram(e.target.value)} 
+                  label="Programa"
+                  disabled={!area}
+                >
+                  {programs.map((p) => (
+                    <MenuItem key={p.code} value={p.code}>
+                      {p.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <TextField
+                fullWidth
+                label="Semestre"
+                type="number"
+                margin="normal"
+                value={semester}
+                inputProps={{ min: 1, max: 10 }}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10);
+                  if (value >= 1 && value <= 10) {
+                    setSemester(e.target.value);
+                  } else if (e.target.value === '') {
+                    setSemester('');
+                  }
+                }}
+              />
+
+              <Button 
+                variant="contained" 
+                color="primary"
+                fullWidth
+                sx={{ mt: 3 }}
+                onClick={() => setDialogOpen(true)}
               >
-                {faculties.map((fac) => (
-                  <MenuItem key={fac.code} value={fac.code}>
-                    {fac.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Área</InputLabel>
-              <Select 
-                value={area} 
-                onChange={(e) => setArea(e.target.value)} 
-                label="Área"
-              >
-                {areas.map((a) => (
-                  <MenuItem key={a.code} value={a.code}>
-                    {a.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Programa</InputLabel>
-              <Select 
-                value={program} 
-                onChange={(e) => setProgram(e.target.value)} 
-                label="Programa"
-              >
-                {programs.map((p) => (
-                  <MenuItem key={p.code} value={p.code}>
-                    {p.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <TextField
-              fullWidth
-              label="Semestre"
-              type="number"
-              margin="normal"
-              value={semester}
-              inputProps={{ min: 1, max: 10 }}
-              onChange={(e) => {
-                const value = parseInt(e.target.value, 10);
-                if (value >= 1 && value <= 10) {
-                  setSemester(e.target.value);
-                } else if (e.target.value === '') {
-                  setSemester('');
-                }
-              }}
-            />
-
-            <Button 
-              variant="contained" 
-              color="primary"
-              fullWidth
-              sx={{ mt: 3 }}
-              onClick={() => setDialogOpen(true)}
-            >
-              Actualizar perfil
-            </Button>
-          </Box>
+                Actualizar perfil
+              </Button>
+            </Box>
+          )}
         </Paper>
       </Container>
       
