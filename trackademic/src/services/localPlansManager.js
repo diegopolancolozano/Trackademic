@@ -46,7 +46,12 @@ const localPlansManager = {
         throw new Error(`Error fetching user plans: ${response.statusText}`);
       }
       
-      return await response.json();
+      const plans = await response.json();
+      // Normalize IDs in the response
+      return plans.map(plan => ({
+        ...plan,
+        _id: localPlansManager._normalizeId(plan._id)
+      }));
     } catch (error) {
       console.error("Error fetching user plans:", error);
       throw error;
@@ -80,6 +85,88 @@ const localPlansManager = {
   },
   
   /**
+   * Get a specific plan by ID
+   * @param {string} planId - The ID of the plan to fetch
+   * @returns {Promise<Object>} - Promise that resolves to the plan object
+   */
+  getPlanById: async (planId) => {
+    try {
+      // Normalize the ID before making the request
+      const normalizedId = localPlansManager._normalizeId(planId);
+      console.log('Fetching plan with normalized ID:', normalizedId); // Debug log
+      
+      const response = await fetch(`${API_URL}?id=${normalizedId}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: defaultHeaders,
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching plan: ${response.statusText}`);
+      }
+      
+      const plans = await response.json();
+      console.log('Received plans:', plans); // Debug log
+      
+      if (!Array.isArray(plans) || plans.length === 0) {
+        throw new Error(`Plan not found with ID: ${normalizedId}`);
+      }
+      
+      // Buscar el plan específico con el ID normalizado
+      const matchingPlan = plans.find(plan => 
+        localPlansManager._normalizeId(plan._id) === normalizedId
+      );
+      
+      if (!matchingPlan) {
+        throw new Error(`Plan not found with ID: ${normalizedId}`);
+      }
+      
+      // Normalize the ID in the response
+      const normalizedPlan = {
+        ...matchingPlan,
+        _id: localPlansManager._normalizeId(matchingPlan._id)
+      };
+      
+      console.log('Normalized plan:', normalizedPlan); // Debug log
+      return normalizedPlan;
+    } catch (error) {
+      console.error("Error fetching plan:", error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Helper function to normalize MongoDB ID for comparison
+   * @param {string|Object} id - The ID to normalize
+   * @returns {string} - The normalized ID string
+   */
+  _normalizeId: (id) => {
+    if (!id) return '';
+    
+    // Si es una cadena, devolverla directamente
+    if (typeof id === 'string') return id;
+    
+    // Si es un objeto MongoDB con $oid
+    if (typeof id === 'object' && id.$oid) {
+      return id.$oid;
+    }
+    
+    // Si es un objeto con _id
+    if (typeof id === 'object' && id._id) {
+      return localPlansManager._normalizeId(id._id);
+    }
+    
+    // Si es un objeto con id
+    if (typeof id === 'object' && id.id) {
+      return localPlansManager._normalizeId(id.id);
+    }
+    
+    // Convertir a string como último recurso
+    return String(id);
+  },
+  
+  /**
    * Update a local plan
    * @param {string} planId - The ID of the plan to update
    * @param {Object} updatedPlan - The updated plan data
@@ -87,20 +174,13 @@ const localPlansManager = {
    */
   updatePlan: async (planId, updatedPlan) => {
     try {
+      // Asegurarnos de no enviar el _id en el cuerpo de la petición
+      const { _id, ...planToUpdate } = updatedPlan;
       
-      const planToUpdate = {
-        user_id: updatedPlan.user_id,
-        titulo: updatedPlan.titulo,
-        subject_id: updatedPlan.subject_id,
-        subject_name: updatedPlan.subject_name,
-        professor: updatedPlan.professor,
-        group: updatedPlan.group,
-        activities: updatedPlan.activities.map(activity => ({
-          name: activity.name,
-          weight: parseFloat(activity.weight),
-          grade: activity.grade !== undefined ? parseFloat(activity.grade) : 0
-        }))
-      };
+      console.log('Sending update request:', {
+        id: planId,
+        plan: planToUpdate
+      });
 
       const response = await fetch(`${API_URL}?id=${planId}`, {
         method: "PUT",
@@ -115,7 +195,10 @@ const localPlansManager = {
         throw new Error(`Error updating plan: ${errorText}`);
       }
       
-      return await response.json();
+      // Como la API no devuelve el documento actualizado, necesitamos obtenerlo
+      const updatedPlanResponse = await localPlansManager.getPlanById(planId);
+      
+      return updatedPlanResponse;
     } catch (error) {
       console.error("Error updating plan:", error);
       throw error;
@@ -179,27 +262,23 @@ const localPlansManager = {
    */
   updateGrade: async (planId, activityName, grade) => {
     try {
-
-      const response = await fetch(`${API_URL}?id=${planId}`, {
-        method: 'GET',
-        mode: 'cors',
-        headers: defaultHeaders,
-        credentials: 'omit'
-      });
+      // First get the current plan to ensure we're updating the correct one
+      const currentPlan = await localPlansManager.getPlanById(planId);
+      console.log('Current plan:', currentPlan); // Debug log
       
-      if (!response.ok) {
-        throw new Error(`Error fetching plan: ${response.statusText}`);
+      // Verify we got the correct plan using normalized comparison
+      const normalizedCurrentId = localPlansManager._normalizeId(currentPlan._id);
+      const normalizedRequestId = localPlansManager._normalizeId(planId);
+      
+      if (normalizedCurrentId !== normalizedRequestId) {
+        console.error('ID mismatch:', { 
+          currentId: normalizedCurrentId, 
+          requestId: normalizedRequestId 
+        });
+        throw new Error('Retrieved plan ID does not match requested ID');
       }
-      
-      const plans = await response.json();
-      if (plans.length === 0) {
-        throw new Error(`Plan not found with ID: ${planId}`);
-      }
-      
-      const plan = plans[0];
-      
 
-      const updatedActivities = plan.activities.map(activity => {
+      const updatedActivities = currentPlan.activities.map(activity => {
         if (activity.name === activityName) {
           return { 
             ...activity, 
@@ -213,15 +292,30 @@ const localPlansManager = {
           grade: activity.grade !== undefined ? parseFloat(activity.grade) : 0
         };
       });
-      
 
-      const updatedPlan = { 
-        ...plan,
-        activities: updatedActivities
+      const updatedPlan = {
+        ...currentPlan,
+        activities: updatedActivities,
+        updatedAt: new Date()
       };
-      
 
-      return await localPlansManager.updatePlan(planId, updatedPlan);
+      console.log('Updating plan with:', updatedPlan); // Debug log
+
+      const result = await localPlansManager.updatePlan(planId, updatedPlan);
+      console.log('Update result:', result); // Debug log
+      
+      // Final verification using normalized comparison
+      const normalizedResultId = localPlansManager._normalizeId(result._id);
+      
+      if (normalizedResultId !== normalizedRequestId) {
+        console.error('ID mismatch:', { 
+          resultId: normalizedResultId, 
+          requestId: normalizedRequestId 
+        });
+        throw new Error('Update resulted in a different plan ID');
+      }
+
+      return result;
     } catch (error) {
       console.error("Error updating grade:", error);
       throw error;

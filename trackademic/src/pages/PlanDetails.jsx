@@ -43,6 +43,11 @@ export default function PlanDetails() {
     severity: 'success'
   });
 
+  // Helper function to normalize MongoDB ID
+  const normalizeId = (id) => {
+    return localPlansManager._normalizeId(id);
+  };
+
   useEffect(() => {
     const fetchPlanDetails = async () => {
       setLoading(true);
@@ -53,27 +58,20 @@ export default function PlanDetails() {
         }
         
         try {
-          const response = await fetch(`https://trackademifunction.vercel.app/api/local_plans?id=${planId}`, {
-            method: 'GET',
-            mode: 'cors',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            credentials: 'omit'
-          });
+          // Normalize the planId before fetching
+          const normalizedPlanId = normalizeId(planId);
+          console.log('Requesting plan with ID:', normalizedPlanId); // Debug log
           
-          if (!response.ok) {
-            throw new Error(`Error al obtener detalles del plan: ${response.statusText}`);
+          const fetchedPlan = await localPlansManager.getPlanById(normalizedPlanId);
+          console.log('Received plan:', fetchedPlan); // Debug log
+          
+          // Verify the fetched plan ID matches the requested ID
+          const normalizedFetchedId = normalizeId(fetchedPlan._id);
+          console.log('Comparing IDs:', { requested: normalizedPlanId, received: normalizedFetchedId }); // Debug log
+          
+          if (normalizedFetchedId !== normalizedPlanId) {
+            throw new Error("El ID del plan recuperado no coincide con el ID solicitado");
           }
-          
-          const plans = await response.json();
-          
-          if (plans.length === 0) {
-            throw new Error("No se encontró el plan solicitado");
-          }
-          
-          const fetchedPlan = plans[0];
           
           // Asegurarse de que activities existe
           if (!fetchedPlan.activities) {
@@ -154,9 +152,10 @@ export default function PlanDetails() {
             : activity
         )
       };
-      setPlan(updatedPlan);
 
       await localPlansManager.updateGrade(planId, activityName, grade);
+      
+      setPlan(updatedPlan);
 
       // Marcar la nota como guardada
       setSavedGrades(prev => ({

@@ -39,6 +39,11 @@ export default function MyPlans() {
     severity: 'info'
   });
 
+  // Helper function to normalize MongoDB ID
+  const normalizeId = (id) => {
+    return localPlansManager._normalizeId(id);
+  };
+
   const fetchUserPlans = async () => {
     setLoading(true);
     try {
@@ -183,7 +188,7 @@ export default function MyPlans() {
                       variant="contained"
                       color="primary"
                       component={Link}
-                      to={`/plan-details/${plan._id}`} // Esta ruta la implementará otro desarrollador
+                      to={`/plan-details/${normalizeId(plan._id)}`}
                       size="small"
                     >
                       Ver detalles y editar
@@ -191,7 +196,7 @@ export default function MyPlans() {
                     
                     <IconButton 
                       color="error" 
-                      onClick={() => handleDeleteClick(plan._id)}
+                      onClick={() => handleDeleteClick(normalizeId(plan._id))}
                       size="small"
                     >
                       <DeleteIcon />
