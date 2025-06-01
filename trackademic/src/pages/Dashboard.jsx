@@ -1,23 +1,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import {
-  Typography,
-  Container,
-  CircularProgress,
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Chip,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Divider,
+  Typography, Container, CircularProgress, Box, Grid, Card, CardContent, Chip, Button, Dialog,
+  DialogTitle, DialogContent, DialogActions, TextField, Divider, Link
 } from '@mui/material';
 import SchoolIcon from '@mui/icons-material/School';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import Navbar from '../components/Navbar';
 import localPlansManager from '../services/localPlansManager';
 import { useNavigate } from 'react-router-dom';
@@ -77,10 +65,7 @@ export default function Dashboard() {
   useEffect(() => {
     fetchData();
 
-    const storedNotes = localStorage.getItem('dashboard_notes');
-    if (storedNotes) {
-      setNotes(storedNotes);
-    }
+    
   }, []);
 
   if (loading) {
@@ -98,6 +83,42 @@ export default function Dashboard() {
         <Typography variant="h4" gutterBottom>
           ¡Hola, {fullName}!
         </Typography>
+
+        {/* Informes Innovadores (Resumen para R.17 y R.18) */}
+        <Typography variant="h5" sx={{ mt: 4 }}>Informes Innovadores</Typography>
+        <Card sx={{ mb: 4, backgroundColor: '#1e1e1e' }}>
+          <CardContent>
+            {/* Promedio Global (R.17) */}
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <TrendingUpIcon sx={{ mr: 1, color: 'primary.main' }} />
+              <Typography variant="h6">Tu Promedio Global</Typography>
+            </Box>
+            <Chip
+              label={
+                calculateGlobalAverage() === 'N/A'
+                  ? 'No hay planes disponibles para calcular tu promedio'
+                  : `Promedio: ${calculateGlobalAverage()}/5.0`
+              }
+              color="primary"
+              sx={{ fontSize: '1.1rem', padding: '8px 16px', mb: 2 }}
+            />
+
+            {/* Resumen de Notas Necesarias (R.18) */}
+            <Typography variant="body1" sx={{ mb: 1 }}>
+              Revisa las notas necesarias para alcanzar tu meta promedio ingresando un objetivo en "Informes Innovadores".
+            </Typography>
+            <Link
+              component="button"
+              variant="body2"
+              onClick={() => navigate('/reports')}
+              sx={{ color: 'primary.main', textDecoration: 'underline', cursor: 'pointer' }}
+            >
+              Ver más
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Divider sx={{ my: 4 }} />
 
         {/* Resumen */}
         <Typography variant="h5" sx={{ mt: 4 }}>Resumen general</Typography>
@@ -117,13 +138,8 @@ export default function Dashboard() {
           ) : (
             <Box
               sx={{
-                p: 2,
-                backgroundColor: '#1e1e1e',
-                borderRadius: 1,
-                minHeight: '80px',
-                '& h1, & h2, & h3': { mt: 2 },
-                '& ul': { pl: 3 },
-                '& p': { mb: 1 },
+                p: 2, backgroundColor: '#1e1e1e', borderRadius: 1, minHeight: '80px',
+                '& h1, & h2, & h3': { mt: 2 }, '& ul': { pl: 3 }, '& p': { mb: 1 }
               }}
             >
               <ReactMarkdown>{notes}</ReactMarkdown>

@@ -19,6 +19,7 @@
 // # 5. DELETE - Eliminar plan local
 // curl -X DELETE "https://trackademifunction.vercel.app/api/local_plans?id=6831659e3c3688153bc68b67"
 
+// localPlansManager.js
 const API_URL = 'https://trackademifunction.vercel.app/api/local_plans';
 
 const defaultHeaders = {
@@ -86,7 +87,7 @@ const localPlansManager = {
    */
   updatePlan: async (planId, updatedPlan) => {
     try {
-      // Asegurarnos de que el plan tiene el formato correcto
+      
       const planToUpdate = {
         user_id: updatedPlan.user_id,
         titulo: updatedPlan.titulo,
@@ -153,14 +154,14 @@ const localPlansManager = {
    */
   deleteAllUserPlans: async (userId) => {
     try {
-      // First get all plans for the user
+
       const userPlans = await localPlansManager.getUserPlans(userId);
-      
-      // Delete each plan
+
+
       const deletePromises = userPlans.map(plan => 
         localPlansManager.deletePlan(plan._id)
       );
-      
+
       await Promise.all(deletePromises);
       return true;
     } catch (error) {
@@ -178,7 +179,7 @@ const localPlansManager = {
    */
   updateGrade: async (planId, activityName, grade) => {
     try {
-      // Get the current plan
+
       const response = await fetch(`${API_URL}?id=${planId}`, {
         method: 'GET',
         mode: 'cors',
@@ -197,29 +198,29 @@ const localPlansManager = {
       
       const plan = plans[0];
       
-      // Find the activity and update the grade
+
       const updatedActivities = plan.activities.map(activity => {
         if (activity.name === activityName) {
           return { 
             ...activity, 
             grade: parseFloat(grade),
-            weight: parseFloat(activity.weight) // Asegurarnos que el peso es número
+            weight: parseFloat(activity.weight)
           };
         }
         return {
           ...activity,
-          weight: parseFloat(activity.weight), // Asegurarnos que el peso es número
+          weight: parseFloat(activity.weight),
           grade: activity.grade !== undefined ? parseFloat(activity.grade) : 0
         };
       });
       
-      // Update the plan with the new activities
+
       const updatedPlan = { 
         ...plan,
         activities: updatedActivities
       };
       
-      // Save the updated plan
+
       return await localPlansManager.updatePlan(planId, updatedPlan);
     } catch (error) {
       console.error("Error updating grade:", error);
@@ -241,7 +242,7 @@ const localPlansManager = {
     let weightedSum = 0;
     
     plan.activities.forEach(activity => {
-      const weight = parseFloat(activity.weight) / 100; // Convertir porcentaje a decimal
+      const weight = parseFloat(activity.weight) / 100;
       const grade = activity.grade !== undefined ? parseFloat(activity.grade) : 0;
       
       if (!isNaN(weight) && !isNaN(grade)) {
@@ -250,13 +251,79 @@ const localPlansManager = {
       }
     });
     
-    // Si no hay pesos válidos, retornar 0
+
     if (totalWeight === 0) {
       return 0;
     }
     
-    // Calcular el promedio ponderado
+
     return weightedSum / totalWeight;
+  },
+
+  /**
+   * Calculate grades needed in remaining activities to reach a target average
+   * @param {Object} plan - The plan object with activities
+   * @param {number} targetAverage - The desired average (0-5)
+   * @returns {Object} - Object with activity names and required grades
+   */
+  calculateRequiredGrades(plan, targetAverage) {
+    if (!plan.activities || plan.activities.length === 0) {
+      return { message: 'No hay actividades para calcular' };
+    }
+
+    const remainingActivities = plan.activities.filter(a => a.grade === 0 || a.grade === null);
+    const assignedActivities = plan.activities.filter(a => a.grade !== 0 && a.grade !== null);
+
+    if (remainingActivities.length === 0) {
+      return { message: 'Todas las actividades están calificadas; no se necesitan más cálculos' };
+    }
+
+    // Calcular contribución actual de las actividades ya asignadas
+    let currentContribution = 0;
+    assignedActivities.forEach(activity => {
+      const weight = parseFloat(activity.weight) / 100;
+      const grade = parseFloat(activity.grade);
+      currentContribution += weight * grade;
+    });
+
+    // Calcular cuánto falta para alcanzar el promedio objetivo
+    const neededContribution = targetAverage - currentContribution;
+
+    // Si la contribución necesaria es negativa o no se puede alcanzar, ajustar mensaje
+    if (neededContribution <= 0) {
+      return { message: 'Ya has alcanzado o superado tu promedio objetivo con las notas asignadas.' };
+    }
+
+    const requiredGrades = {};
+    let remainingNeed = neededContribution;
+
+    // Procesar actividades en orden para asignar notas
+    for (const activity of remainingActivities) {
+      if (remainingNeed <= 0) break; // Si ya alcanzamos el objetivo, paramos
+
+      const activityWeight = parseFloat(activity.weight) / 100;
+      // Calcular la nota necesaria para cubrir lo que falta
+      let requiredGrade = remainingNeed / activityWeight;
+      // Redondear al mínimo alcanzable (incrementos de 0.1)
+      requiredGrade = Math.ceil(requiredGrade * 10) / 10; // Redondear al siguiente 0.1
+      requiredGrade = Math.min(Math.max(requiredGrade, 0), 5); // Limitar a 0-5
+      const contribution = (requiredGrade * activityWeight).toFixed(2);
+
+      requiredGrades[activity.name] = {
+        requiredGrade: requiredGrade.toFixed(2),
+        contribution: contribution
+      };
+
+      // Actualizar lo que falta
+      remainingNeed -= parseFloat(contribution);
+    }
+
+    // Si no se puede alcanzar el objetivo con las actividades restantes
+    if (remainingNeed > 0) {
+      return { message: 'No es posible alcanzar tu promedio objetivo con las actividades restantes.' };
+    }
+
+    return requiredGrades;
   }
 };
 
