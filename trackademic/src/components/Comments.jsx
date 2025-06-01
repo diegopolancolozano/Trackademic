@@ -100,6 +100,7 @@ export default function Comments({ planId }) {
     if (!editedContent.trim() || submitting) return;
 
     setSubmitting(true);
+    setError(null);
     try {
       await commentsManager.updateComment(editingComment._id, {
         content: editedContent.trim()
@@ -147,12 +148,6 @@ export default function Comments({ planId }) {
       <Typography variant="h6" gutterBottom>
         Comentarios
       </Typography>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
 
       <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }}>
         <TextField
