@@ -7,3 +7,5 @@ Proyecto creado para entrega final del curso de sistemas intensivos en datos
 - Nicolas Cardona
 - Alejandro Mejía
 - Diego Polanco Lozano
+
+Deployment: https://trackademic-three.vercel.app
